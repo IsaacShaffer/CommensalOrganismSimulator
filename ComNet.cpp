@@ -1,34 +1,34 @@
 #include <random>
 
 using namespace std;
-
+// First iteration: undirected graph with weighted edges
 // The structure of the node
 struct Node
 {
-	Node *A;
-	Node *C;
-	Node *G;
-	Node *T;
-	int *loc;
+	int *status;
+	int *time-since-change;
+	int *node-type;
+	int *number-of-connections;
+	Node **connections;
+	double **weights;
 };
 
-class PrefixTrie
+class ComNet
 {
 	// Root node pointer
 	private:
 	Node *root;
-	unsigned int nodeCount, maxReps;
+	unsigned int nodeCount;
 	
 	public:
-	// Default Constructor for Prefix Trie
-	PrefixTrie()
+	// Default Constructor for Array
+	ComNet()
 	{
-		this->nodeCount = 0;
-		this->maxReps = 0;
-		this->root = newNode();
+		this->nodeCount = 3;
+		this->root = newNet(3);
 	}
 	// Contructor for a prefix trie based on a given sequence
-	PrefixTrie(char *seq, int seqSize, int wordSize)
+	ComNet(char *seq, int seqSize, int wordSize)
 	{
 		int i,j;
 		char loadSeq[wordSize];
@@ -45,7 +45,7 @@ class PrefixTrie
 		}// end i for
 	}
 	// Default Destructor for Prefix Trie
-	~PrefixTrie()
+	~ComNet()
 	{
 		prune(this->root);
 		this->root = NULL;
