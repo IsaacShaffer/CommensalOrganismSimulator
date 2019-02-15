@@ -2,8 +2,16 @@
 //
 
 #include "ComOrgSim.h"
+#include "ComNet.cpp"
 
 using namespace std;
+
+struct clNode
+{
+	char *status;
+};
+
+
 
 int main()
 {
