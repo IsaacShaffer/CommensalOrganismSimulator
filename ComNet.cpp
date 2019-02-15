@@ -3,22 +3,26 @@
 using namespace std;
 // First iteration: undirected graph with weighted edges
 // The structure of the node
-struct Node
+struct netNode
 {
-	int *status;
-	int *time-since-change;
-	int *node-type;
-	int *number-of-connections;
+	int n-connections;
 	Node **connections;
-	double **weights;
+	double **closeness;
+	char type;
+};
+
+struct clNode
+{
+	char *status;
 };
 
 class ComNet
 {
 	// Root node pointer
 	private:
-	Node *root;
-	unsigned int nodeCount;
+	netNode *netroot;
+	clNode *clroot;
+	unsigned int netSize;
 	
 	public:
 	// Default Constructor for Array
