@@ -9,59 +9,39 @@
 
 struct ctNode
 {
-	char *status;
+	std::vector<char> status;
 };
 
 class netEvolver
 {
 private:
+	ComNet *netWork;
 	int currentStep;
 	int timeSteps;
-	int tableSize;
-	ctNode *tableRoot;
-	netNode *netRoot;
-
+	std::vector<ctNode> evolutionTable;
 
 public:
-	netEvolver(int N, int timesteps, ) {
-		ctNode *changeTable = new ctNode[N];
-		for (int i = 0; i < N; i++) {
-			char *temp = new char[timesteps+1];
-			for (int j = 0; j < timesteps+1; j++) {
-				temp[j] = '#';
-			}
-			(changeTable[i]).status = temp;
-		}
-		this->tableRoot = changeTable;
-		this->currentStep = 0;
-		this->timeSteps = timesteps+1;
-		this->tableSize = N;
+	netEvolver(ComNet in_netWork) {
+		int N = in_netWork.node_count();
+		int i;
+		this->netWork = &in_netWork;
+		ctNode emptyNode;
+		
+		for (i = 0; i < N; i++) { evolutionTable.push_back(emptyNode); }
 	};
 
-	~netEvolver() {
-		ctNode *changeTable = this->tableRoot;
-		for (int i = 0; i < this->timeSteps; i++) {
-			delete[](changeTable[i]).status;
-		}
-		delete[]changeTable;
-	};
-
-	void writeTimeEvolution(char *filename) {
-		ctNode *changeTable = this->tableRoot;
-		int N = this->tableSize;
-		int timesteps = this->timeSteps;
+	void writeTimeEvolution(std::string filename) {
 		std::ofstream outfile(filename, std::ofstream::out);
-		outfile << "Node";
-		for (int j = 0; j < timesteps; j++) {
-			outfile << ", T" << j;
-		}
-		outfile << " \n";
-		for (int i = 0; i < N; i++) {
-			outfile << i;
-			for (int j = 0; j < timesteps; j++) {
-				outfile << ", " << (changeTable[i]).status[j];
+		int i, j;
+		outfile << "Header\n";
+		int node_num = 0;
+		for (auto &node_it : evolutionTable) {
+			node_num++;
+			outfile << node_num;
+			for (auto &t_step : node_it.status) {
+				outfile << ", " << t_step;
 			}
-			outfile << " \n";
+			outfile << "\n";
 		}
 		outfile.close();
 	};

@@ -84,7 +84,7 @@ public:
 			netWork[i].Closeness.push_back(-1);
 			degreeTotal += 1;
 		}
-		std::cout << netWork.size() << " Nodes with " << degreeTotal / 2 << " edges.\n";
+		// std::cout << netWork.size() << " Nodes with " << degreeTotal / 2 << " edges.\n";
 		
 		std::vector<int> waitQueue;
 		std::vector<int> doneQueue;
@@ -178,11 +178,8 @@ public:
 		// std::cout << "Done.\n";
 	}
 	// Default Destructor for Array of struct
-	~ComNet()
-	{
-	}
-
-	unsigned int size()
+	
+	int node_count()
 	{
 		return netWork.size();
 	}
