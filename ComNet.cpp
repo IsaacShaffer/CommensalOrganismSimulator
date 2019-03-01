@@ -75,6 +75,8 @@ public:
 			}
 			degreeTotal = degreeTotal + degree;
 			netWork.push_back(emptyNode);
+			emptyNode.Connection.erase(emptyNode.Connection.begin(), emptyNode.Connection.end());
+			emptyNode.Closeness.erase(emptyNode.Closeness.begin(), emptyNode.Closeness.end());
 		}
 		if (degreeTotal % 2 != 0) {
 			i = uni_int(0, N-1);
@@ -82,10 +84,10 @@ public:
 			netWork[i].Closeness.push_back(-1);
 			degreeTotal += 1;
 		}
-		std::cout << N << " Nodes with " << degreeTotal / 2 << " edges.\n";
+		std::cout << netWork.size() << " Nodes with " << degreeTotal / 2 << " edges.\n";
 		
-		std::vector<int> waitQueue(N);
-		std::vector<int> doneQueue(N);
+		std::vector<int> waitQueue;
+		std::vector<int> doneQueue;
 		
 		for (i = 0; i < N; i++) {
 			if (netWork[i].Connection.size() > 0) {
@@ -106,31 +108,33 @@ public:
 				i = 0;
 				closeness = unif(re);
 				while (netWork[inQa].Connection[i] >= 0) { i++; }
-				// std::cout << "writing " << i + 1 << " of " << (netWork[inQa]).nConnections << " at " << inQa << " to ";
+			    // std::cout << "writing " << i + 1 << " of " << netWork[inQa].Connection.size() << " at " << inQa << " to ";
 				netWork[inQa].Connection[i] = inQb;
 				(netWork[inQa]).Closeness[i] = closeness;
 				if (netWork[inQa].Connection.size() == i + 1) {
 					doneQueue.push_back(inQa);
 					waitQueue.erase(waitQueue.begin() + a);
+					if (a < b) { b += -1; }
 				}
 				i = 0;
 				while (netWork[inQb].Connection[i] >= 0) { i++; }
-				// std::cout << i + 1 << " of " << (netWork[inQb]).nConnections << " at " << inQb << "\n";
+				// std::cout << i + 1 << " of " << netWork[inQb].Connection.size() << " at " << inQb << "\n";
 				netWork[inQb].Connection[i] = inQa;
 				netWork[inQb].Closeness[i] = closeness;
 				if (netWork[inQb].Connection.size() == i + 1) {
 					doneQueue.push_back(inQb);
 					waitQueue.erase(waitQueue.begin() + b);
 				}
+				// std::cout << "Done writing.\n";
 			}
 			else {
-				stuck_count += 1;
+				stuck_count++;
 				// std::cout << "Stuck Count " << stuck_count << "\n";
 				if (stuck_count > waitQueue.size()*(waitQueue.size() - 1)+3)
 				{
 					// Shake it up!!
 					stuck_count = 0;
-					std::cout << "Stuck at " << waitQueue.size() << "\n";
+					// std::cout << "Stuck at " << waitQueue.size() << "\n";
 					int shakeUp = waitQueue.size() + 3;
 					for (int l = 0; l < shakeUp; l++) {
 						
@@ -138,8 +142,8 @@ public:
 						int random_start = doneQueue[random_dQ_index];
 						int random_start_index = uni_int(0, (netWork[random_start]).Connection.size() - 1);
 						int random_end = netWork[random_start].Connection[random_start_index];
-						std::vector<int>::iterator re_it = std::find(netWork[random_end].Connection.begin(), netWork[random_end].Connection.end(), random_start);
-						int random_end_index = std::distance(netWork[random_end].Connection.begin(), re_it);
+						int random_end_index = 0;
+						while (netWork[random_end].Connection[random_end_index] != random_start) { random_end_index++; }
 
 						// 
 						// Remove from list of connects on both ends
@@ -156,40 +160,22 @@ public:
 						// Fix the waitQueue and doneQueue
 						
 						waitQueue.push_back(random_start);
-						//////////////////////////
-						// START HERE
-						////////////////////////
-
-						re_it = std::find(waitQueue.begin(), waitQueue.end(), random_end);
-						if (re_it != waitQueue.end()) {
-
+						doneQueue.erase(doneQueue.begin()+random_dQ_index);
+						
+						int dQ_end_index = 0;
+						while ((doneQueue[dQ_end_index] != random_end) && (dQ_end_index < doneQueue.size())) { dQ_end_index++; }
+						if (dQ_end_index < doneQueue.size()) {
+							waitQueue.push_back(random_end);
+							doneQueue.erase(doneQueue.begin()+dQ_end_index);
 						}
-						for (j = random_dQ_index; j < doneQueue_len - 1; j++) {
-							doneQueue[j] = doneQueue[j + 1];
-						}
-						doneQueue[doneQueue_len - 1] = -1;
-						doneQueue_len += -1;
-						j = 0;
-						while ((random_end != doneQueue[j]) && (j < doneQueue_len)) { j++; }
-						if (j < doneQueue_len) {
-							waitQueue[waitQueue_len] = random_end;
-							waitQueue_len += 1;
-							for (k = j; k < doneQueue_len - 1; ++k) {
-								doneQueue[k] = doneQueue[k + 1];
-							}
-							doneQueue[doneQueue_len - 1] = -1;
-							doneQueue_len += -1;
-
-						}
-
 
 					}
-					std::cout << "Shaken!\n";
+					// std::cout << "Shaken!\n";
 				}
 			}
-			// std::cout << " Q len " <<waitQueue_len << "\n";
+			// std::cout << " Q len " <<waitQueue.size() << "\n";
 		}
-		std::cout << "Done.\n";
+		// std::cout << "Done.\n";
 	}
 	// Default Destructor for Array of struct
 	~ComNet()
@@ -202,26 +188,16 @@ public:
 	}
 
 	void writeNetAdjacency(std::string filename) {
-		netNode *netWork = netroot;
-		int N = netSize;
 		std::ofstream outfile(filename, std::ofstream::out);
-		int i, j;
+		int i,j;
 		outfile << "From, To, Weight\n";
-		for (i = 0; i < N; i++) {
-			for (j = 0; j < (netWork[i]).nConnections; j++) {
-				outfile << i << ", " << (netWork[i]).Connection[j] << ", " << (netWork[i]).Closeness[j] << "\n";
+		i = 0;
+		for (auto &it : netWork) {
+			i++;
+			for (j = 0; j < it.Connection.size(); j++) {
+				outfile << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << "\n";
 			}
 		}
 		outfile.close();
-	};
+	}
 };
-
-int main(int argc, char *argv[]) {
-	int N = atoi(argv[1]);
-	int minC = atoi(argv[2]);
-	int maxC = atoi(argv[3]);
-	ComNet net1(N, minC, maxC);
-	std::cout << "TP1\n";
-	// ComNet net2(N, minC, maxC);
-	net1.writeNetAdjacency("test2.txt");
-}
