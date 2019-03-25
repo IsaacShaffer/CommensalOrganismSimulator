@@ -1,10 +1,11 @@
 ﻿// ComOrgSim.cpp : Defines the entry point for the application.
 //
 
-#include "ComOrgSim.h"
 #include "ComNet.cpp"
+#include <string>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 #include <cstdlib>
 
 struct ctNode
@@ -15,13 +16,14 @@ struct ctNode
 class netEvolver
 {
 private:
-	ComNet *netWork;
+	bool status_set;
+	comNet *netWork;
 	int currentStep;
 	int timeSteps;
 	std::vector<ctNode> evolutionTable;
 
 public:
-	netEvolver(ComNet in_netWork) {
+	netEvolver(comNet in_netWork) {
 		int N = in_netWork.node_count();
 		int i;
 		this->netWork = &in_netWork;
@@ -46,46 +48,53 @@ public:
 		outfile.close();
 	};
 
-	void setNetStatus(int timestep, char *intialize) {
-		ctNode *changeTable = this->tableRoot;
-		int step;
-		if (timestep < 0) { step = 0; }
-		if (timestep > this->timeSteps) { step = timeSteps; }
-		for (int i = 0; i < this->tableSize; i++) {
-			(changeTable[i]).status[step] = intialize[i];
+	void setNetStatus(char *intialize) {
+		int i;
+		if (!status_set) {
+			i = 0;
+			for (auto &node : evolutionTable) {
+				node.status[0] = intialize[i];
+				i++;
+			}
+			status_set = true;
 		}
 	}
 
-	void evolve(ComNet *netWork, int timesteps) {
-		char *nextStep = new [this->tableSize];
-		int lastStep = this->currentStep + timesteps;
-		if (lastStep > this->timeSteps) {
-			lastStep = this->timeSteps;
-		}
-		if (timesteps >= 1) {
+	void evolve(int timesteps, double p_clear, int base_clear, double p_self_colonize ) {
+		std::vector<char> nextStep;
+		int i, j;
+		if (status_set) {
+			
+			for (i = 0; i < timesteps; i++) {
+				j = 0;
+				for (auto &node : evolutionTable) {
 
+					j++;
+				}
+				
+			}
+		} else {
+			std::cout << "Set intial status distribution first!\n";
 		}
-		delete[] nextStep;
 	}
 
 	int current_step(int setStep) {
-		return this->current_step;
+		return this->currentStep;
 	}
 
 };
 
-
-
-
 int main(int argc, char *argv[])
 {
+	int N, minConnections, maxConnections, timesteps;
+	int i, j, k;
+
 	if (argc != 6) { // argc should be at least 2 for correct execution
 	  // We print argv[0] assuming it is the program name
-		cout << "usage: " << argv[0] << "networkSize minNodeConnections maxNodeConnections timesteps <output filename>\n";
+		std::cout << "usage: " << argv[0] << "networkSize minNodeConnections maxNodeConnections timesteps <output filename>\n";
 		exit(1);
 	}
-	char *filename = argv[5];
-	int N, minConnections, maxConnections, timesteps;
+	std::string filename = argv[5];
 	if (atoi(argv[1]) < 20) {
 		N = 20;
 	}
@@ -104,7 +113,14 @@ int main(int argc, char *argv[])
 	else {
 		timesteps = atoi(argv[4]);
 	}
-
-	
+	std::vector<int> distances;
+	comNet randNet(N, minConnections, maxConnections);
+	std::cout << "Net Contstruction Complete\n";
+	netEvolver evolvedNet(randNet);
+	distances = randNet.path_lengths(21);
+	// for (auto &it : randNet.neighbors(0)) { std::cout << "0 connected to " << it << "\n"; }
+	// for (i = 0; i < distances.size(); i++) { std::cout << "21 to " << i<<": "<< distances[i] << "\n"; }
+	// std::cout << "Diameter = " << randNet.diameter() << "\n";
+	randNet.writeNetEdgelist("ForDisplay.csv");
 	return 0;
 }
