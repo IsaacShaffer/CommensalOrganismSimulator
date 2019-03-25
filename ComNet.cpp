@@ -632,6 +632,15 @@ public:
 		return netWork[Node].Connection;
 	}
 
+	int depth(int node) {
+		return netWork[node].Depth;
+	}
+
+	std::vector<double> closeness(int Node)
+	{
+		return netWork[Node].Closeness;
+	}
+	
 	double average_degree() {
 		double average;
 		int total = 0;
@@ -641,11 +650,6 @@ public:
 		}
 		average = total / netWork.size();
 		return average;
-	}
-
-	std::vector<double> closeness(int Node)
-	{
-		return netWork[Node].Closeness;
 	}
 
 	int node_count()
@@ -750,17 +754,35 @@ public:
 	}
 
 	void writeNetEdgelist(std::string filename) {
-		int i,j;
+		int i, j;
 		int ret_val = 0;
 		std::ofstream outfile(filename, std::ofstream::trunc);
-		outfile << "From, To, Weight\n";
+		outfile << "From, To, Weight, Type, Depth\n";
 		i = 0;
 		for (auto &it : netWork) {
 			for (j = 0; j < it.Connection.size(); j++) {
-				outfile << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << "\n";
+				outfile << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << ", " << it.Type << ", " << it.Depth << "\n";
 			}
 			i++;
 		}
 		outfile.close();
+	}
+
+	void readNetEdgelist(std::string filename) {
+		int i, j;
+		int ret_val = 0;
+		std::ifstream infile(filename, std::ifstream::in);
+		/*
+		i = 0;
+		for (auto &it : netWork) {
+			for (j = 0; j < it.Connection.size(); j++) {
+				outfile << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << ", " << it.Type << ", " << it.Depth << "\n";
+			}
+			i++;
+		}
+		outfile.close();
+		*/
+		infile.close();
+		std::cout << "Cannot read edgelists yet.\n";
 	}
 };
