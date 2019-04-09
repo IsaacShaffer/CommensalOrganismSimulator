@@ -1,0 +1,137 @@
+---
+title: "Network Visualization Test"
+author: "Isaac Shaffer"
+date: "February 18, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.height=3)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+library(data.table)
+library(colorRamps)
+library(scales)
+library(tidyverse)
+# library(GGally)
+# library(latex2exp)
+library(ggnetwork)
+# library(statnet)
+library(sna)
+
+#library(boot)
+# library(lme4)
+# library(lmerTest)
+# library(boot)
+# library(pbkrtest)
+# library(merTools)
+
+plot_graph <- function(G, ...){
+
+  plot <- ggplot(G, aes(x=x, y=y, xend = xend, yend = yend), ...) + 
+  geom_edges(aes(alpha = Closeness), size=0.2, color='black') +
+  geom_nodes(aes(color = Status), size = 2) +
+  scale_color_manual(values = c('green','red','yellow')) +
+  theme_blank() +
+  theme(legend.position = 'none')
+  #  geom_nodetext(aes(label = vertex.names),
+  #              fontface = "bold", size=2) +
+  
+  return(plot)
+}
+
+edgelist2network <- function(edgelist, ...){
+  ## Undirected graph so...
+  # Reduced_edgelist <- edgelist %>% filter(From < To) 
+  
+  # Edgelist direct method does not seem to work
+  # Creating adjacency matrix and importing that works
+  node_num = max(edgelist["From"], edgelist["To"])+1
+  adjMatrix = matrix(0, ncol = node_num, nrow = node_num)
+
+  for (i in 1:nrow(edgelist)){
+    row <- edgelist[i,]
+    adjMatrix[row$From+1, row$To+1] <- row$Weight
+  }
+  # G <- network.initialize(node_num)
+  G <- as.network(adjMatrix, matrix.type="adjacency", ...)
+  return(G)
+}
+
+```
+
+```{r}
+setwd("C:/Users/Isaac/Desktop/NAU Grad School/2019 Spring/CS 599/ComOrgSim/ComOrgSim/R code")
+
+test1 <- read.csv("C:/Users/Isaac/Desktop/NAU Grad School/2019 Spring/CS 599/ComOrgSim/ComOrgSim/R code/test2.csv") 
+
+setwd('C:/Users/Isaac/Source/Repos/')
+
+test2 <- read.csv('C:/Users/Isaac/Source/Repos/test_network.csv')
+
+subnet <-test2 %>% filter(Depth < 3)
+
+G <- edgelist2network(test2, directed = FALSE, 
+                      ignore.eval=FALSE, names.eval='Closeness' )
+
+Pop_evolution <- data.table::transpose(read.csv("C:/Users/Isaac/Source/Repos/test_evolution.csv",
+                                    row.names = 1, strip.white = TRUE))
+colnames(Pop_evolution) <- paste0('Node_',1:dim(Pop_evolution)[2])
+
+G %v% "Status" = Pop_evolution[1,]
+# Network Layout Types:
+# adj, circle, circrand, eigen, fruchtermanreingold, geodist,
+# hall, kamadakawai, mds, princoord, random, rmds, segeo,
+# seham, spring, springrepulse
+
+# Note: Following layouts change with iteration:
+# kamadakawai, fruchtermanreingold, spring, springrepulse
+
+A <- plot_graph(G, layout = 'adj')
+ggsave('display_temp.png',A, device = 'png')
+plot_graph(G, layout = 'circle')
+plot_graph(G, layout = 'kamadakawai')
+```
+
+
+```{r}
+library(animation)
+test2 <- read.csv('C:/Users/Isaac/Source/Repos/test_network.csv')
+
+G <- edgelist2network(test2, directed = FALSE, 
+                      ignore.eval=FALSE, names.eval='Closeness' )
+
+Pop_evolution <- data.table::transpose(read.csv("C:/Users/Isaac/Source/Repos/test_evolution.csv",
+                                    row.names = 1, strip.white = TRUE))
+colnames(Pop_evolution) <- paste0('Node_',1:dim(Pop_evolution)[2])
+
+G %v% "Status" = Pop_evolution[1,]
+
+# Good layouts:  geodist, eigen, segeo, 
+
+saveAnimation <- list()
+for (i in 1:100){
+# for (i in 1:dim(Pop_evolution)[1]){
+  G %v% "Status" = Pop_evolution[i,]
+  day_lab <- paste('Day:',i)
+  saveAnimation[[i]] <- ggplot(G, aes(x=x, y=y, xend = xend, yend = yend), layout = "segeo") + 
+    geom_edges(aes(alpha = Closeness), size=0.2, color='black') +
+    geom_nodes(aes(color = Status), size = 2) +
+    scale_color_manual(values = c('green','red','yellow')) +
+    theme_blank() +
+    theme(legend.position = 'none',
+          panel.background = element_rect(fill = "grey68",
+                                colour = "grey68",
+                                size = 0.5, linetype = "solid")) + 
+    annotate("text", x=1, y=0, label = day_lab) 
+  print(paste('Time step:',i))
+}
+  
+saveGIF({lapply(saveAnimation, print)}, "animationTest.gif")
+
+```
+
+

@@ -5,19 +5,22 @@
 #include <vector>
 #include <cstdlib>
 #include <algorithm>
+#include <limits>
+#include <iomanip>
+#include <cmath>
+#include <chrono>
+#include <stdexcept>
 
-std::random_device rd;     // only used once to initialise (seed) engine
-std::mt19937_64 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-std::default_random_engine re;
-std::uniform_real_distribution<double> unif(0, 1);
+// std::random_device r;     // only used once to initialise (seed) engine
+// std::seed_seq seed{ r(),r(),r(),r(),r(),r(),r(),r() };
+std::mt19937_64 rng(std::chrono::steady_clock::now().time_since_epoch().count());    // random-number engine used (Mersenne-Twister in this case)
 
-struct netNode
-{
-	std::vector<int> Connection;
-	std::vector<double> Closeness;
-	int Depth;
-	char Type;
-};
+double runif() {  // return a random integer in [from, to] range 
+	double temp = 0;
+	std::uniform_real_distribution<double> unif(0, 1);
+	while ((temp <= 0) || (temp >= 1)) { temp = unif(rng); }
+	return temp;
+}
 
 int uni_int(int from, int to) {  // return a random integer in [from, to] range 
 	std::uniform_int_distribution<int> dist(from, to);
@@ -26,6 +29,13 @@ int uni_int(int from, int to) {  // return a random integer in [from, to] range
 
 // First iteration: undirected graph with weighted edges
 // The structure of the node
+struct netNode
+{
+	std::vector<int> Connection;
+	std::vector<double> Closeness;
+	int Depth;
+	char Type;
+};
 
 class comNet
 {
@@ -39,17 +49,22 @@ private:
 
 	bool undirected() {
 		bool UD = true;
-		int start_node;
-		for (start_node = 0; start_node < netWork.size(); start_node++) {
-			for (auto conn : netWork[start_node].Connection) {
+		int start_node_loc = 0;
+		int conn_loc = 0;
+		for (auto start_node : netWork) {
+			conn_loc = 0;
+			for (auto conn : start_node.Connection) {
 				if (conn >= 0) {
-					if (std::find(netWork[conn].Connection.begin(), netWork[conn].Connection.end(), start_node) == netWork[conn].Connection.end()) {
+					if ((std::find(netWork[conn].Connection.begin(), netWork[conn].Connection.end(), start_node_loc) == netWork[conn].Connection.end()) ||
+					(std::find(netWork[conn].Closeness.begin(), netWork[conn].Closeness.end(), start_node.Closeness[conn_loc]) == netWork[conn].Closeness.end())) {
 						UD = false;
 						// std::cout << start_node << " not found in node " << conn << "\n";
 						// std::cin.ignore();
 					}
 				}
+				conn_loc++;
 			}
+			start_node_loc++;
 		}
 		return UD;
 	}
@@ -67,8 +82,9 @@ private:
 		int i, j, k, currentNode, edgesToBreak, currentDepth;
 		std::vector<int> maxConnectedNet, temp_path_lens, adjNodes;
 		int random_netIndex, random_start, random_start_index;
-		int random_end, random_end_index, closeness;
+		int random_end, random_end_index;
 		bool found_removeable_edge, connection_in_Queue;
+		double closeness;
 		/* Find fully connected and closed inner net to break open 
 		   and largest set of certainly connected nodes (to keep connected)
 		if (!undirected()) {
@@ -85,7 +101,9 @@ private:
 					j = availableConnections(node);
 				}
 			}
+			// std::cout << "Working on " << currentNode << ". Available connections: " << availableConnections(currentNode) << "\n";
 			edgesToBreak = floor(availableConnections(currentNode) / 2);
+			// std::cout << "Edges: " << edgesToBreak << "\n";
 			// Adding node to middle does not break network. Add anywhere.
 			if (edgesToBreak > 0) {
 				// std::cout << "Inserting node " << currentNode << "\n";
@@ -105,7 +123,7 @@ private:
 						for (int end_node : netWork[random_start].Connection) {
 							if ((connectable(currentNode, random_start) && (connectable(currentNode, end_node)))) {
 								found_removeable_edge = true;
-								//std::cout << "Can split " << random_start << " from " << end_node << "\n";
+								// std::cout << "Can split " << random_start << " from " << end_node << "\n";
 							}
 						}
 					}
@@ -119,17 +137,19 @@ private:
 					// Inserting waitQueue currentNode
 					// std::cout << "RSI: " << random_start_index << " REI: " << random_end_index << "\n";
 					// std::cout << "SND: " << netWork[random_start].Connection.size() << " RED: " << netWork[random_end].Connection.size() << "\n";
-					closeness = unif(re);
+					closeness = runif(); 
+					// std::cout << "Ummmm " << closeness << "-----" << runif()<< "\n";
 					netWork[random_start].Connection[random_start_index] = currentNode;
 					netWork[random_start].Closeness[random_start_index] = closeness;
-					k = firstOpenIndex(currentNode);
 					
+					k = firstOpenIndex(currentNode);
 					netWork[currentNode].Connection[k] = random_start;
 					netWork[currentNode].Closeness[k] = closeness;
-
-					closeness = unif(re);
+					// std::cout << "Ummmm " << closeness << "\n";
+					closeness = runif();
 					netWork[random_end].Connection[random_end_index] = currentNode;
 					netWork[random_end].Closeness[random_end_index] = closeness;
+
 					k = firstOpenIndex(currentNode);
 					netWork[currentNode].Connection[k] = random_end;
 					netWork[currentNode].Closeness[k] = closeness;
@@ -147,7 +167,7 @@ private:
 				while ((i < waitQueue.size()) && (!connection_in_Queue)) {
 					if (connectable(currentNode, waitQueue[i])) {
 						connection_in_Queue = true;
-						closeness = unif(re);
+						closeness = runif();
 						k = firstOpenIndex(waitQueue[i]);
 						netWork[waitQueue[i]].Connection[k] = currentNode;
 						netWork[waitQueue[i]].Closeness[k] = closeness;
@@ -230,7 +250,7 @@ private:
 					// Singleton case: Singletons connect to any node.
 					// Possible different treatment other singleton case.
 					// std::cout << "connecting " << random_start << " to " << currentNode << "\n";
-					closeness = unif(re);
+					closeness = runif();
 					netWork[random_start].Connection[random_start_index] = currentNode;
 					netWork[random_start].Closeness[random_start_index] = closeness;
 					k = firstOpenIndex(currentNode);
@@ -244,26 +264,6 @@ private:
 			if (!undirected()) { std::cout << "Broke some shit in the Shake Up module. Network no longer undirected...\n"; }
 			// std::cout << "WaitQ at " << waitQueue.size() << " nodes.\n";
 		}//end while waitQueue loop
-		// Fix Node Depths
-		std::vector<int> currentDQueue, nextDQueue, toDoQueue;
-		for (i = 0; i < netWork.size(); i++) { toDoQueue.push_back(i); }
-		currentDepth = 0;
-		currentDQueue.push_back(startNode);
-		while (toDoQueue.size() > 0) {
-			for (int node : currentDQueue) {
-				if (std::find(toDoQueue.begin(), toDoQueue.end(), node) != toDoQueue.end()) {
-					netWork[node].Depth = currentDepth;
-					for (int node2 : netWork[node].Connection) {
-						nextDQueue.push_back(node2);
-					}
-					toDoQueue.erase(std::remove(toDoQueue.begin(), toDoQueue.end(), node), toDoQueue.end());
-				}
-			}
-			currentDepth++;
-			currentDQueue.clear();
-			currentDQueue = nextDQueue;
-			nextDQueue.clear();
-		}
 	}
 
 	bool nodesAreConnected(std::vector<int> node_list) {
@@ -344,8 +344,62 @@ private:
 		return i;
 	}
 
+	std::vector<std::string> split(std::string line, std::string delimiter) {
+		std::vector<std::string> dataOut;
+		std::string whitespaces(" \t\f\v\n\r");
+		std::string tempWord;
+		std::size_t word_start, word_end, start_pos = 0;
+		//Split line at delimiters
+		std::size_t found = line.find_first_of(delimiter);
+		while (found != std::string::npos)
+		{
+			tempWord = line.substr(start_pos, found - start_pos);
+			// Strip word then strip lead/trail space
+			word_start = tempWord.find_first_not_of(whitespaces);
+			if (word_start != std::string::npos) {
+				word_end = tempWord.find_last_not_of(whitespaces);
+				if (word_end != std::string::npos) { tempWord.erase(word_end + 1); }
+				dataOut.push_back(tempWord.substr(word_start));
+			}
+			else { dataOut.push_back(""); }
+			start_pos = found + 1;
+			found = line.find_first_of(delimiter, start_pos);
+		}
+		// Catch Last in line
+		if (start_pos != std::string::npos) {
+			tempWord = line.substr(start_pos);
+			word_start = tempWord.find_first_not_of(whitespaces);
+			if (word_start != std::string::npos) {
+				word_end = tempWord.find_last_not_of(whitespaces);
+				if (word_end != std::string::npos) { tempWord.erase(word_end + 1); }
+				dataOut.push_back(tempWord.substr(word_start));
+			}
+			else { dataOut.push_back(""); }
+		}
+		return dataOut;
+	}
+
+	std::vector<std::vector<std::string> > getData(std::string fileName) {
+		std::ifstream file(fileName);
+		std::vector<std::string> vec;
+		std::string delimiter(",;");
+		std::vector<std::vector<std::string> > dataList;
+
+		std::string line = "";
+		// Iterate through each line and split the content using delimeter
+		while (getline(file, line))
+		{
+			vec = split(line, delimiter);
+			dataList.push_back(vec);
+		}
+		// Close the File
+		file.close();
+
+		return dataList;
+	}
+
 public:
-	// Default Constructor for Array
+	// Default Constructor for Random Network 
 	comNet(const int Nmin, const int minCon, const int maxCon)
 	{
 		int i, j, k, l;
@@ -353,6 +407,7 @@ public:
 		int avgDegree = 0;
 		int degree = 0;
 		int degreeTotal = 0;
+		bool stick_or_loop = false;
 		std::vector<int> tempIntVec;
 		netNode emptyNode;
 
@@ -389,26 +444,36 @@ public:
 		else {
 			// maxConnections==2 dictates a loop or stick
 			// Make a stick
-			int ones_count = 0;
+			stick_or_loop = true;
+			i = 0;
 			for (auto &node : netWork) {
-				ones_count -= node.Connection.size() - 2;
-				if (ones_count > 2) {
-					if (node.Connection.size() == 1) {
-						node.Connection.push_back(-1);
-						node.Closeness.push_back(-1);
-					}
+				node.Closeness.clear();
+				node.Connection.clear();
+				if (i == 0) {
+					node.Connection.push_back(i + 1);
+					node.Closeness.push_back(runif());
 				}
+				else if (i == netWork.size() - 1) {
+					node.Connection.push_back(i - 1);
+					node.Closeness.push_back(netWork[i - 1].Closeness[0]);
+				}
+				else {
+					node.Connection.push_back(i + 1);
+					node.Closeness.push_back(runif());
+					node.Connection.push_back(i - 1);
+					node.Closeness.push_back(netWork[i - 1].Closeness[0]);
+				}
+				i++;
 			}
 			// Randomly make a loop (unless minConnections==2 dictates a loop)
 			if ((uni_int(0, 1)) || (minConnections == 2)) {
-				for (auto &node : netWork) {
-					if (node.Connection.size() == 1) {
-						node.Connection.push_back(-1);
-						node.Closeness.push_back(-1);
-					}
-				}
+				netWork[0].Connection.push_back(netWork.size()-1);
+				netWork[0].Closeness.push_back(runif());
+				netWork[netWork.size() - 1].Connection.push_back(0);
+				netWork[netWork.size() - 1].Closeness.push_back(netWork[0].Closeness[1]);
 			}
 		}
+		// TODO: Complete and Nearly Complete Networks
 		std::cout << netWork.size() << " Nodes with " << edge_count()*2 << " open connections.\n";
 		// Main Network Assembly
 		int startNode = 0;
@@ -428,6 +493,11 @@ public:
 			waitQueue.push_back(i);
 		}
 		netWork[startNode].Depth = 0;
+
+		if (stick_or_loop) { 
+			waitQueue.clear();
+			startNode = uni_int(0, netWork.size() - 1);
+		}
 		// Start building!
 		while ((waitQueue.size() > 0) && isNotStuck) {
 			// If depthQ has been cleared move on to next depth
@@ -487,8 +557,7 @@ public:
 						//std::cout << "Found " << connectableWaits.size() << " open nodes -- ";
 						if (connectableWaits.size() > 0) { // Make a connection
 							randomConnection = connectableWaits[uni_int(0, connectableWaits.size() - 1)];
-							//std::cout << "attempting to connect " << node_i << " to " << randomConnection << ".";
-							closeness = unif(re);
+							closeness = runif();
 							netWork[node_i].Connection[k] = randomConnection;
 							netWork[node_i].Closeness[k] = closeness;
 							//std::cout << "." << availableConnections(randomConnection) <<".";
@@ -526,10 +595,14 @@ public:
 			if (depthQCap > 0) {
 				// Take out the trash
 				cleanUpQueue(depthQueue);
+				// std::cout << "WaitQ: ";
+				// for (int node : waitQueue) { std::cout << node << ", "; }
+				// std::cout << "\n";
+
 				// Make final connection or
 				if (((waitQueue.size() == 2) && connectable(waitQueue[0],waitQueue[1])) &&
 					((availableConnections(waitQueue[0]) ==1) && (availableConnections(waitQueue[1]==1)))) {
-					closeness = unif(re);
+					closeness = runif();
 					i = firstOpenIndex(waitQueue[0]);
 					netWork[waitQueue[0]].Connection[i] = waitQueue[1];
 					netWork[waitQueue[0]].Closeness[i] = closeness;
@@ -622,8 +695,47 @@ public:
 			}
 			*/
 		} // Main While Loop
+		// Make sure node depth is correct (especially after a shake, stick or loop)
+		std::vector<int> currentDQueue, nextDQueue, toDoQueue;
+		for (i = 0; i < netWork.size(); i++) { toDoQueue.push_back(i); }
+		currentDepth = 0;
+		currentDQueue.push_back(startNode);
+		while (toDoQueue.size() > 0) {
+			for (int node : currentDQueue) {
+				if (std::find(toDoQueue.begin(), toDoQueue.end(), node) != toDoQueue.end()) {
+					netWork[node].Depth = currentDepth;
+					for (int node2 : netWork[node].Connection) {
+						nextDQueue.push_back(node2);
+					}
+					toDoQueue.erase(std::remove(toDoQueue.begin(), toDoQueue.end(), node), toDoQueue.end());
+				}
+			}
+			currentDepth++;
+			currentDQueue.clear();
+			currentDQueue = nextDQueue;
+			nextDQueue.clear();
+		}
+		// Last ditch error handling
 		if (!isConnected()) {
 			std::cout << "Something went wrong. Network not connected... sigh...";
+		}
+
+	}
+	// Constructor from saved network
+	comNet(const std::string filename) {
+		minConnections = ceil(average_degree());
+		maxConnections = floor(average_degree());
+
+		readNetEdgelist(filename);
+		for (auto node : netWork) {
+			if (node.Connection.size() < minConnections) {
+				minConnections = node.Connection.size();
+			}
+			else {
+				if (node.Connection.size() > maxConnections) {
+					maxConnections = node.Connection.size();
+				}
+			}
 		}
 	}
 	// Standard Network Value Returns
@@ -655,6 +767,18 @@ public:
 	int node_count()
 	{
 		return netWork.size();
+	}
+
+	int average_weight() {
+		double total_weight = 0;
+		int edge_count = 0;
+		for (auto node : netWork) {
+			for (auto weight : node.Closeness) {
+				total_weight += weight;
+				edge_count++;
+			}
+		}
+		return (total_weight / edge_count);
 	}
 
 	int edge_count() {
@@ -690,7 +814,7 @@ public:
 		return dist;
 	}
 
-	// THIS ALGORITHM IS BROKEN. IT NEED TO SPAN THE WHOLE NETWORK.
+	// THIS ALGORITHM IS BROKEN. IT NEEDS TO SPAN THE WHOLE NETWORK.
 	// OR BE RE-CREATED FOR A DIFFERENT PURPOSE
 	std::vector<int> path_lengths(int start_node, std::vector<int> node_list)
 	{
@@ -757,11 +881,12 @@ public:
 		int i, j;
 		int ret_val = 0;
 		std::ofstream outfile(filename, std::ofstream::trunc);
-		outfile << "From, To, Weight, Type, Depth\n";
+		outfile << "Source, Target, Weight\n";   //, Type, Depth\n";
 		i = 0;
 		for (auto &it : netWork) {
 			for (j = 0; j < it.Connection.size(); j++) {
-				outfile << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << ", " << it.Type << ", " << it.Depth << "\n";
+				// std::cout << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << ", " << it.Type << ", " << it.Depth << "\n";
+				outfile << i << ", " << it.Connection[j] << ", " << std::setprecision(std::numeric_limits<long double>::digits10) << it.Closeness[j] << "\n"; //<< ", " << it.Type << ", " << it.Depth
 			}
 			i++;
 		}
@@ -770,19 +895,93 @@ public:
 
 	void readNetEdgelist(std::string filename) {
 		int i, j;
-		int ret_val = 0;
-		std::ifstream infile(filename, std::ifstream::in);
-		/*
-		i = 0;
-		for (auto &it : netWork) {
-			for (j = 0; j < it.Connection.size(); j++) {
-				outfile << i << ", " << it.Connection[j] << ", " << it.Closeness[j] << ", " << it.Type << ", " << it.Depth << "\n";
+		int fromNode, toNode, Depth;
+		double weight;
+		char Type;
+		std::vector<std::vector<std::string>> data = getData(filename);
+		netWork.clear();
+		for (auto line : data) {
+			if (line.size() > 4) {
+				throw std::invalid_argument("Not an edge list.");
+				netWork.clear();
+				break;
 			}
-			i++;
+			try {
+				fromNode = std::stoi(line[0]);
+				toNode = std::stoi(line[1]);
+				weight = std::stod(line[2]);
+				Type = line[3][0];
+				Depth = std::stoi(line[4]);
+				netWork[fromNode].Connection.push_back(toNode);
+				netWork[fromNode].Closeness.push_back(weight);
+				netWork[fromNode].Type = Type;
+				netWork[fromNode].Depth = Depth;
+			}
+			catch (const std::exception &e) {
+				// Catch and ignore Header and other invalid lines
+				// std::cout << e.what() << "\n";
+			}
 		}
-		outfile.close();
-		*/
-		infile.close();
-		std::cout << "Cannot read edgelists yet.\n";
+		if (undirected()) {
+			std::cout << "This network is undirected and ";
+			if (isConnected()) {
+				std::cout << "connected.\n";
+			}
+			else {
+				std::cout << "not connected.\n";
+			}
+		}
+		else {
+			std::cout << "This is a directed network.\n";
+		}
 	}
+
+	// NEEDS WORK
+	void readAdjacencyMatrix(std::string filename) {
+		int i, j;
+		int fromNode, toNode, Depth;
+		double weight;
+		char Type;
+		std::vector<std::vector<std::string>> data = getData(filename);
+		netWork.clear();
+		for (i = 0; i < data.size(); i++) {
+			for (j = 0; j < data[i].size();j++) {
+				if (data[i].size() != data.size()) {
+					throw std::invalid_argument("Not an adjacency matrix.");
+					netWork.clear();
+					break;
+				}
+				try {
+					fromNode = i;
+					toNode = j;
+					weight = std::stod(data[i][j]);
+					Type = '\0';
+					Depth = 0;
+					if (weight != 0) {
+						netWork[fromNode].Connection.push_back(toNode);
+						netWork[fromNode].Closeness.push_back(weight);
+						netWork[fromNode].Type = Type;
+						netWork[fromNode].Depth = Depth;
+					}
+				}
+				catch (const std::exception &e) {
+					// Catch and ignore Header and other invalid lines
+					// std::cout << e.what() << "\n";
+				}
+			}
+		}
+		if (undirected()) {
+			std::cout << "This network is undirected and ";
+			if (isConnected()) {
+				std::cout << "connected.\n";
+			}
+			else {
+				std::cout << "not connected.\n";
+			}
+		}
+		else {
+			std::cout << "This is a directed network.\n";
+		}
+	}
+
 };

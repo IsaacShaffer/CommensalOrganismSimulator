@@ -46,6 +46,43 @@ public:
 		for (i = 0; i < N; i++) { evolutionTable.push_back(makeEmptyNode()); }
 	};
 
+
+/*	void loadParameters(std::string filename) {
+		std::istringstream is_file(filename);
+
+		std::string line;
+		while (std::getline(is_file, line))
+		{
+			std::istringstream is_line(line);
+			std::string key;
+			if (std::getline(is_line, key, '='))
+			{
+				std::string value;
+				if (std::getline(is_line, value))
+					store_line(key, value);
+			}
+		}
+	} */
+
+	void writeNetworkStatistics(std::string filename) {
+		std::ofstream outfile(filename, std::ofstream::trunc);
+		int i, j;
+		int ICount, TCount;
+		// outfile << "P_Node_count, " << PCount <<", B_Node_count, "<<BCount << "\n";
+		outfile << "Time_Step, I_count, T_count\n";
+		for (i = 0; i < evolutionTable[0].status.size(); i++) {
+			ICount = 0;
+			TCount = 0;
+			for (j = 0; j < evolutionTable.size(); j++) {
+				if (evolutionTable[j].status[i] == 'I') { ICount++; }
+				if (evolutionTable[j].status[i] == 'T') { TCount++; }
+			}
+			outfile << i << ", " << ICount << ", " << TCount << "\n";
+		}
+		outfile.close();
+	}
+
+
 	void writeTimeEvolution(std::string filename) {
 		std::ofstream outfile(filename, std::ofstream::trunc);
 		int i, j;
@@ -62,7 +99,25 @@ public:
 			node_num++;
 		}
 		outfile.close();
-	};
+	}
+
+	void writeEvolutionSummary(std::string filename) {
+		std::ofstream outfile(filename, std::ofstream::trunc);
+		int i, j;
+		int ICount, TCount;
+		// outfile << "P_Node_count, " << PCount <<", B_Node_count, "<<BCount << "\n";
+		outfile << "Time_Step, I_count, T_count\n";
+		for (i = 0; i < evolutionTable[0].status.size(); i++) {
+			ICount = 0;
+			TCount = 0;
+			for (j = 0; j < evolutionTable.size();j++) {
+				if (evolutionTable[j].status[i] == 'I') { ICount++; }
+				if (evolutionTable[j].status[i] == 'T') { TCount++; }
+			}
+			outfile << i << ", " << ICount << ", " << TCount << "\n";
+		}
+		outfile.close();
+	}
 
 	void setNetStatus(std::vector<char> initialize) {
 		int i;
@@ -92,7 +147,7 @@ public:
 		std::vector<double> closeness;
 		if (status_set) {
 			for (i = currentStep; i < timesteps+currentStep; i++) {
-				std::cout << "Current Time: " << i+1 << "\n";
+				// std::cout << "Current Time: " << i+1 << "\n";
 				for (j = 0; j < evolutionTable.size(); j++) {
 					// std::cout << "Current Node: " << j << " with status: "<<evolutionTable[j].status[i]<<"\n";
 					t_since_last_event = time_to_last(j);
@@ -100,14 +155,14 @@ public:
 					if (evolutionTable[j].status[i] == 'C') {
 						acquired_cleared = false;
 						// Probability of self colonizing currently uniform. Should be exponential?
-						if (unif(re) < p_self_colonize) { acquired_cleared = true; }
+						if (runif() < p_self_colonize) { acquired_cleared = true; }
 						// std::cout << "Passed self-col step\n";
 						neighbors = netWork.neighbors(j);
 						closeness = netWork.closeness(j);
 						for (k = 0; k < neighbors.size(); k++) {
 							// std::cout << "Checking neighbor " << neighbors[k] << " with infection status: " << evolutionTable[neighbors[k]].status[i] << "\n";
 							if (evolutionTable[neighbors[k]].status[i] == 'I') {
-								if (unif(re) < closeness[k]) { acquired_cleared = true; }
+								if (runif() < closeness[k]) { acquired_cleared = true; }
 								/*
 
 								This is where the expontential times closeness comes in. Or does it?
@@ -126,7 +181,7 @@ public:
 					if (evolutionTable[j].status[i] == 'I') {
 						acquired_cleared = false;
 						// Probability of clearing currently uniform. Should be exponential?
-						if (unif(re) < p_clear) { acquired_cleared = true; }
+						if (runif() < p_clear) { acquired_cleared = true; }
 						if (acquired_cleared) {
 							evolutionTable[j].status.push_back('T');
 						}
@@ -170,7 +225,7 @@ int main(int argc, char *argv[])
 
 	if (argc != 6) { // argc should be at least 2 for correct execution
 	  // We print argv[0] assuming it is the program name
-		std::cout << "usage: " << argv[0] << "networkSize minNodeConnections maxNodeConnections timesteps <output filename>\n";
+		std::cout << "usage: " << argv[0] << "networkSize minNodeConnections maxNodeConnections timesteps <output filename base>\n";
 		exit(1);
 	}
 	std::string filename = argv[5];
@@ -196,12 +251,12 @@ int main(int argc, char *argv[])
 	std::vector<char> inits;
 	// Make a network
 	comNet randNet(N, minConnections, maxConnections);
-	std::cout << "Net Contstruction Complete\n";
-	randNet.writeNetEdgelist("ForDisplay.csv");
+	// std::cout << "Net Contstruction Complete\n";
+	randNet.writeNetEdgelist(filename+"_network.csv");
 
 	// Initialize Evolver
 	netEvolver evolvedNet(randNet.node_count());
-	std::cout << "Evolver initialized.\n";
+	// std::cout << "Evolver initialized.\n";
 	for (i = 0; i < randNet.node_count(); i++) {
 		if (randNet.depth(i) == 0) {
 			inits.push_back('I');
@@ -210,12 +265,13 @@ int main(int argc, char *argv[])
 			inits.push_back('C');
 		}
 	}
-	std::cout << "Initial statuses list complete.\n";
+	// std::cout << "Initial statuses list complete.\n";
 	evolvedNet.setNetStatus(inits);
-	std::cout << "Initial statuses set. \n";
-	evolvedNet.evolve(randNet, timesteps, 0.25, 5, 0.01);
+	// std::cout << "Initial statuses set. \n";
+	evolvedNet.evolve(randNet, timesteps, 0.25, 4, 0.01);
 	std::cout << "Evolution complete.\n";
-	evolvedNet.writeTimeEvolution(filename);
+	evolvedNet.writeEvolutionSummary(filename + "_summary.csv");
+	evolvedNet.writeTimeEvolution(filename + "_evolution.csv");
 	std::cout << "Done.\n";
 	return 0;
 }
